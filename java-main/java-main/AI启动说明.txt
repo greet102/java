@@ -1,0 +1,142 @@
+﻿================================================================
+ 喵喵博客项目 · AI 快速启动手册（本文件给 AI 助手阅读）
+================================================================
+【最重要的一句话】这台电脑每次开机都会重置：node_modules 和
+target 文件夹会被删除，其他内容（源码、脚本、数据库、本文件）保留。
+启动脚本 v2 已内置全部自动恢复逻辑，不要重复排查已确认的事实，
+按本手册直接执行即可。
+
+----------------------------------------------------------------
+一、项目结构
+----------------------------------------------------------------
+java-main\
+├─ 一键启动.bat / 一键停止.bat   ← 总入口，双击即用（GBK+CRLF）
+├─ AI启动说明.txt                ← 本文件
+├─ 启动日志.txt                  ← 一键启动自动追加的结果记录（排查先看这里）
+├─ blog_db.sql                   ← Navicat 导出的数据库备份（用户手动生成）
+├─ springBootTest\               ← 后端 Spring Boot 3.4.5 (Java 17)
+│   ├─ sql\blog.sql              ← 建库脚本（数据库被清时重新导入）
+│   ├─ 启动后端.bat / 停止后端.bat / 重新打包.bat
+│   ├─ run.log                   ← 后端运行日志（启动窗口的输出同时写这里）
+│   └─ src\main\java\com\fenglin\springboottest\
+│        controller  → /api/auth/*（注册/登录/登出/me，Session 登录态）
+│                       /api/posts/*（文章 CRUD + 点赞）
+│        service / mapper(MyBatis-Plus) / entity / dto / common / config
+└─ blog-vue\                     ← 前端 Vue3 + Vite（端口 5173）
+    ├─ src\store.js              ← fetch('/api/...') 调后端
+    ├─ vite.config.js            ← 代理 /api → http://localhost:8081
+    └─ 启动前端.bat / 停止前端.bat
+
+----------------------------------------------------------------
+二、环境事实（均已验证，勿再排查）
+----------------------------------------------------------------
+- MySQL 8.0.39：root / 123456，库 blog_db（utf8mb4）
+  客户端不在 PATH：
+  "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+  重置数据库：mysql -uroot -p123456 --default-character-set=utf8mb4 < sql\blog.sql
+- 端口：后端 8081（dev profile）/ 前端 5173 / MySQL 3306
+- Maven 不在 PATH，用 IDEA 自带：
+  "D:\IntelliJ IDEA 2024.3.2.2\plugins\maven\lib\maven3\bin\mvn.cmd"
+  （脚本会自动寻找，PATH 有 mvn 优先用 PATH）
+- JDK：C:\Program Files\Zulu\zulu-21（java 已在 PATH，
+  系统 JAVA_HOME 也已指向 Zulu；脚本内仍会兜底设置）
+- Node.js：D:\Program Files\nodejs（npm 在 PATH）；备用：
+  C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-2
+- npm 源：脚本统一使用 npmmirror 国内镜像
+  https://registry.npmmirror.com（官方源在本机较慢易超时）
+- 演示账号：喵站长 / 奶油喵 / 星星，密码均 123456
+- 后端启动速度：jar 直启约 1.8 秒（pom 已移除 devtools/thymeleaf，
+  已开 lazy-initialization）；mvn package 热缓存约 10-15 秒
+
+----------------------------------------------------------------
+三、启动脚本 v2 行为（2026-10-14 重写，已实测通过）
+----------------------------------------------------------------
+核心原则：绝不依赖 target 和 node_modules 的旧内容，
+每次启动都从源码完整重建。
+
+一键启动.bat（总入口）：
+1. 后端（springBootTest\启动后端.bat）：
+   a. 自检 MySQL 3306，未运行给警告
+   b. 8081 已监听则直接跳过（防重复启动）
+   c. 自动定位 Java/Maven，设置 JAVA_HOME，清除 SERVER__PORT/HOST
+   d. 无条件 mvn package -DskipTests（全程显示输出，10秒-3分钟）
+   e. 数据库自检：blog_db 缺失则自动导入 sql\blog.sql
+   f. start 新窗口运行 jar，等待 8081 就绪（最长180秒）
+2. 前端（blog-vue\启动前端.bat）：
+   a. 5173 已监听则直接跳过
+   b. 自动定位 npm（PATH → D:\Program Files\nodejs → workbuddy node）
+   c. 无条件 npm install（npmmirror 镜像，--no-audit --no-fund）
+      并校验 node_modules\.bin\vite.cmd 存在
+   d. start 新窗口运行 npm run dev，等待 5173 就绪（最长120秒）
+3. 汇总检查两个端口，显示 启动成功/未完成，结果追加 启动日志.txt
+
+双击入口：java-main\一键启动.bat → 浏览器 http://localhost:5173
+→ 喵站长 / 123456 登录。全程约 1-5 分钟，窗口持续滚动输出属正常。
+
+排查启动失败时按顺序看：
+  java-main\启动日志.txt（哪一步失败）
+  → springBootTest\run.log（后端报错详情）
+  → blog-vue\npm.log（前端报错详情）
+
+停止：双击 一键停止.bat，或直接关掉两个服务窗口。
+
+----------------------------------------------------------------
+四、AI 在终端里操作时的坑（本机特有，已踩过，勿再踩）
+----------------------------------------------------------------
+1. shell 设有 HTTP_PROXY=127.0.0.1:63252：
+   curl 访问 localhost 必须加 --noproxy '*'，否则返回 502
+2. shell 设有 SERVER__PORT=63237，会覆盖 Spring Boot 端口：
+   启动 Java 服务前先 env -u SERVER__PORT -u SERVER__HOST
+3. Git Bash 里 taskkill 参数用单斜杠：taskkill /PID xxx /F
+4. Git Bash 的 curl -c/-b cookie jar 对 localhost 的 JSESSIONID
+   保存不上：测试会话接口时用 -H "Cookie: JSESSIONID=xxx" 手动带
+5. 生成 bat 必须同时满足两个条件（缺一不可，否则 cmd 静默失败不执行）：
+   a) GBK 编码：iconv -f UTF-8 -t GBK 输入.tmp > 输出.bat
+   b) CRLF 换行：cmd 不接受 LF 换行的批处理，必须再加工：
+      iconv -f UTF-8 -t GBK 输入.tmp | sed 's/$/\r/' > 输出.bat
+      （已生成的 LF 旧文件修复：sed 's/$/\r/' 旧文件 > 新文件）
+6. 从 Git Bash 直接 cmd //c 调用中文名 bat 会失败（参数不转换），
+   用 PowerShell 工具 + 调用运算符：& 'C:\...\一键启动.bat' auto
+   （输出捕获不到 GBK 中文属正常现象，以副作用/端口状态为准）
+7. ( )& 方式脱离的进程会随会话被杀，验证用的长跑服务统一用
+   后台任务方式启动，结束时按端口 PID taskkill
+8. 脚本里的 start "标题" cmd /k 开新窗口只在真实桌面双击时有效；
+   沙箱无桌面环境无法弹窗，验证服务要直接用 java -jar / npm run dev
+9. PowerShell 工具里不能调 cmd.exe（安全策略拦截），跑 bat 用调用
+   运算符 & '路径\脚本.bat'；PowerShell 工具的 stdout 经常捕获不到，
+   需要输出时让命令重定向到文件再读
+
+----------------------------------------------------------------
+五、启动后 30 秒自检清单
+----------------------------------------------------------------
+curl --noproxy '*' -s http://localhost:8081/api/posts
+  → 返回 {"ok":true,...文章列表...}
+curl --noproxy '*' -s http://localhost:5173/api/posts
+  → 经 vite 代理同样返回（证明前后端已联通）
+登录：POST http://localhost:8081/api/auth/login
+  body {"username":"喵站长","password":"123456"} → {"ok":true}
+
+----------------------------------------------------------------
+六、改了代码之后
+----------------------------------------------------------------
+- Java 代码：双击 springBootTest\重新打包.bat，然后重启后端窗口
+  （一键启动下次运行时也会自动重新打包，无需手动操作）
+- 前端代码：什么都不用做，vite 热更新即时生效
+- 数据库结构要改：改 sql\blog.sql，重新导入（注意会清掉数据）
+  备份可参考根目录 blog_db.sql（Navicat 导出）
+
+----------------------------------------------------------------
+七、2026-10-14 脚本 v2 相比旧版的修复记录
+----------------------------------------------------------------
+- 修复致命 bug：旧版 一键启动.bat 被子脚本的 cd 改变工作目录后，
+  用相对路径调 blog-vue\启动前端.bat 找不到文件 → 前端永远起不来；
+  v2 改用 %~dp0 绝对路径调用子脚本
+- 旧版打包用 -q 静默模式，几分钟无输出像卡死 → v2 全程显示输出
+- 旧版依赖 if exist 判断旧产物 → v2 每次无条件重新打包/安装
+- v2 新增：blog_db 缺失自动导入、npmmirror 镜像、JAVA_HOME 兜底、
+  清除 SERVER__PORT/SERVER__HOST、就绪等待写回 启动日志.txt
+- 停止脚本（一键停止/停止后端/停止前端）逻辑未变，无需重写
+
+================================================================
+ 最后更新：2026-10-14 08:59
+================================================================
