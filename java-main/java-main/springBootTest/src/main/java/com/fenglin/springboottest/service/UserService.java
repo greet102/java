@@ -35,6 +35,11 @@ public class UserService {
         User user = new User();
         user.setUsername(username);
         user.setPassword(password); // 演示项目，明文存储
+        user.setAvatar("🐱");
+        user.setNickname(username);
+        user.setSlogan("这个人很懒，什么也没写～");
+        user.setBio("");
+        user.setLocation("");
         userMapper.insert(user);
         return user;
     }

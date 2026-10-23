@@ -1,11 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useStore } from '../store'
 import Sidebar from './Sidebar.vue'
 import PostCard from './PostCard.vue'
 import PostModal from './PostModal.vue'
+import ProfileView from './ProfileView.vue'
+import UserRow from './UserRow.vue'
 
-const { state, filteredPosts, logout, addPost, updatePost } = useStore()
+const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome } = useStore()
 
 const showModal = ref(false)
 const editing = ref(null) // 非 null 时为编辑模式
@@ -14,7 +16,22 @@ const toast = ref('')
 let toastTimer = null
 
 const me = computed(() => state.currentUser)
-const titles = { all: '全部文章', mine: '我的文章', liked: '我点赞的' }
+const titles = { all: '全部文章', mine: '我的文章', liked: '我点赞的', faved: '我的收藏' }
+
+// “我的关注”展示的是人而不是文章，单独走一个分支
+const isFollowingView = computed(() => state.filter === 'following' && state.view === 'home')
+
+const followingList = computed(() => {
+  const list = state.myProfile?.followings || []
+  const kw = keyword.value.trim().toLowerCase()
+  if (!kw) return list
+  return list.filter(
+    (u) =>
+      (u.nickname || '').toLowerCase().includes(kw) ||
+      u.username.toLowerCase().includes(kw) ||
+      (u.slogan || '').toLowerCase().includes(kw)
+  )
+})
 
 const displayPosts = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
@@ -30,8 +47,11 @@ const displayPosts = computed(() => {
 function showToast(text) {
   toast.value = text
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toast.value = ''), 1800)
+  toastTimer = setTimeout(() => (toast.value = ''), 1600)
 }
+
+// 切换栏目时清掉搜索词，避免上一栏的关键词还在过滤新栏目
+watch(() => state.filter, () => (keyword.value = ''))
 
 function onLogout() {
   logout()
@@ -67,7 +87,9 @@ async function handleSubmit(payload) {
       </div>
       <div class="topbar-right">
         <button class="btn btn-ghost" @click="openNew">✏️ 写新文章</button>
-        <div class="avatar">{{ me ? me[0].toUpperCase() : '🐾' }}</div>
+        <div class="avatar clickable" @click="openProfile(me)">
+          {{ state.myProfile?.avatar || me?.[0] || '🐾' }}
+        </div>
         <button class="btn btn-ghost" @click="onLogout">退出</button>
       </div>
     </header>
@@ -76,18 +98,47 @@ async function handleSubmit(payload) {
       <Sidebar :user="me" :filter="state.filter" />
 
       <main class="content">
-        <div class="feed-head">
-          <h2>{{ titles[state.filter] }}</h2>
-          <span class="feed-count">{{ displayPosts.length }} 篇</span>
-          <input class="search-input" v-model="keyword" placeholder="🔍 搜索标题 / 内容 / 作者" />
-        </div>
+        <!-- 个人主页视图 -->
+        <ProfileView
+          v-if="state.view === 'profile'"
+          :username="state.profileUser"
+          @back="backHome"
+          @edit="openEdit"
+          @toast="showToast"
+        />
 
-        <div v-if="displayPosts.length" class="feed">
-          <PostCard v-for="p in displayPosts" :key="p.id" :post="p" @edit="openEdit" />
-        </div>
-        <div v-else class="empty">
-          <span class="big">🐾</span>这里还空空的，去写点什么吧～
-        </div>
+        <!-- 我的关注：单独一栏，列出关注到的博主 -->
+        <template v-else-if="isFollowingView">
+          <div class="feed-head">
+            <h2>💞 我的关注</h2>
+            <span class="feed-count">{{ followingList.length }} 位小伙伴</span>
+            <input class="search-input" v-model="keyword" placeholder="🔍 搜索昵称 / 用户名 / 标语" />
+          </div>
+
+          <div v-if="followingList.length" class="profile-list">
+            <UserRow v-for="u in followingList" :key="u.username" :user="u" @toast="showToast" />
+          </div>
+          <div v-else class="empty">
+            <span class="big">💞</span>
+            {{ keyword.trim() ? '没有匹配的小伙伴，换个词试试～' : '还没有关注别人，去广场发现有趣的人吧～' }}
+          </div>
+        </template>
+
+        <!-- 文章广场视图 -->
+        <template v-else>
+          <div class="feed-head">
+            <h2>{{ titles[state.filter] }}</h2>
+            <span class="feed-count">{{ displayPosts.length }} 篇</span>
+            <input class="search-input" v-model="keyword" placeholder="🔍 搜索标题 / 内容 / 作者" />
+          </div>
+
+          <div v-if="displayPosts.length" class="feed">
+            <PostCard v-for="p in displayPosts" :key="p.id" :post="p" @edit="openEdit" @toast="showToast" />
+          </div>
+          <div v-else class="empty">
+            <span class="big">🐾</span>这里还空空的，去写点什么吧～
+          </div>
+        </template>
       </main>
     </div>
 

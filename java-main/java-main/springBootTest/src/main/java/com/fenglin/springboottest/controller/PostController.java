@@ -66,6 +66,13 @@ public class PostController {
         return Result.ok(postService.toggleLike(username, id));
     }
 
+    /** 收藏 / 取消收藏 */
+    @PostMapping("/{id}/favorite")
+    public Result<List<String>> favorite(@PathVariable Long id, HttpSession session) {
+        String username = requireLogin(session);
+        return Result.ok(postService.toggleFavorite(username, id));
+    }
+
     private String requireLogin(HttpSession session) {
         String username = (String) session.getAttribute(UserController.SESSION_USER);
         if (username == null) {

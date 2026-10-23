@@ -19,4 +19,7 @@ public class PostVO {
 
     /** 点赞用户名列表 */
     private List<String> likes;
+
+    /** 收藏用户名列表 */
+    private List<String> favorites;
 }
