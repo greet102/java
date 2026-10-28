@@ -137,6 +137,44 @@ curl --noproxy '*' -s http://localhost:5173/api/posts
   清除 SERVER__PORT/SERVER__HOST、就绪等待写回 启动日志.txt
 - 停止脚本（一键停止/停止后端/停止前端）逻辑未变，无需重写
 
+
+----------------------------------------------------------------
+八、2026-10-28 修复记录（一键启动后端打包失败）
+----------------------------------------------------------------
+- 现象：一键启动在“重新打包后端”步骤报 [失败] 后端：打包失败，
+       根因是 mvn package 编译失败，并非脚本逻辑 bug。
+- 根因：2026-10-23 收藏功能只改了 PostService / PostController
+       （引用了 PostFavorite 实体与 PostFavoriteMapper），但漏建
+       这两个类，导致编译报错。
+- 修复：补建 entity/PostFavorite.java 与 mapper/PostFavoriteMapper.java
+       （参照 PostLike 同款写法，表名 post_favorite）。
+- 数据库：原 sql/blog.sql 缺少 post_favorite 表与 user 个人主页字段，
+       已补齐；并新增 sql/blog_db_upgrade.sql 做幂等增量升级。
+       注意 MySQL 8.0 不支持 “ALTER TABLE ... ADD COLUMN IF NOT EXISTS”，
+       升级脚本改用存储过程按 information_schema 逐列判断补齐。
+- 启动后端.bat 的数据库自检新增 ensure_schema 步骤：无论 blog_db
+       是缺失（导入 blog.sql）还是已存在旧结构（跑 blog_db_upgrade.sql），
+       都会补齐最新表结构，收藏/个人主页功能方可正常使用。
+
+----------------------------------------------------------------
+十、2026-10-28 续：关注按钮不显示“已关注”（isFollowing 字段 bug）
+----------------------------------------------------------------
+- 现象：关注某人后，关注列表(UserRow)与主页按钮不会变成“已关注”。
+- 根因（关键）：UserSummary / ProfileVO 的字段名为 boolean isFollowing，
+      但 Lombok 生成的 getter 是 isFollowing()、Jackson 又按布尔命名规则
+      把 JSON 键名剥成 following，导致前端读取的 isFollowing 永远 undefined。
+      （这是比“按钮写死”更隐蔽的字段名对齐 bug，两处都中招。）
+- 修复：
+      ① UserSummary 增加 isFollowing 字段；UserService.getFollowings(viewer,username)
+        在组装“TA关注的人/我的关注”时，按浏览者是否关注逐行填充 isFollowing；
+      ② 两个 DTO 的 isFollowing 字段加 @JsonProperty("isFollowing")，
+        强制 JSON 键名与前端对齐；
+      ③ 前端 store.toggleFollow 就地更新写错了字段（following→isFollowing），已修正；
+      ④ 前端 UserRow.vue 按钮改为按 user.isFollowing 显示
+        “✓ 已关注”（灰色样式），点击可关注/取消关注并给出正确提示。
+- 验证：后端 profile 接口实测顶层与 followings 每行 isFollowing 正确；
+      Vite 转译 store.js / UserRow.vue 无报错。
+
 ================================================================
- 最后更新：2026-10-14 08:59
+ 最后更新：2026-10-28 09:40
 ================================================================

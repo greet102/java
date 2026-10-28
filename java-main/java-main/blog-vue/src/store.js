@@ -251,7 +251,7 @@ async function toggleFollow(username) {
   if (!res.ok) return false
   // 就地更新主页上的关注状态与粉丝数，避免等待请求时空窗
   if (state.profile && state.profile.username === username) {
-    state.profile.following = res.data.following
+    state.profile.isFollowing = res.data.following
     state.profile.followerCount = res.data.followerCount
   }
   // 当前正看着某个主页时，它的关注/粉丝列表可能也因此增删，拉一次最新的

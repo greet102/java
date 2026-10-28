@@ -64,16 +64,26 @@ if not exist "%MYSQL%" goto start_be
 "%MYSQL%" -uroot -p123456 -N -B -e "USE blog_db;" >nul 2>&1
 if errorlevel 1 goto import_db
 echo [OK] 数据库 blog_db 正常
-goto start_be
+goto ensure_schema
 :import_db
 echo [步骤2] 数据库 blog_db 不存在，正在导入 sql\blog.sql ...
 "%MYSQL%" -uroot -p123456 --default-character-set=utf8mb4 -e "source sql/blog.sql" >nul 2>&1
 if errorlevel 1 goto import_fail
 echo [OK] 数据库已导入
-goto start_be
+goto ensure_schema
 :import_fail
 echo [警告] 数据库导入失败，后端可能无法读取数据
 >> "%LOG%" echo [警告] 后端：数据库 blog_db 导入失败
+goto start_be
+:ensure_schema
+if not exist "sql\blog_db_upgrade.sql" goto start_be
+"%MYSQL%" -uroot -p123456 --default-character-set=utf8mb4 -e "source sql/blog_db_upgrade.sql" >nul 2>&1
+if errorlevel 1 (
+    echo [警告] 数据库结构升级失败，收藏/个人主页功能可能不可用
+    >> "%LOG%" echo [警告] 后端：数据库结构升级失败
+) else (
+    echo [OK] 数据库结构已对齐最新版本
+)
 
 REM ---------- 7. 启动并等待就绪 ----------
 :start_be
