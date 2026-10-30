@@ -9,6 +9,7 @@ CREATE DATABASE IF NOT EXISTS `blog_db` DEFAULT CHARACTER SET utf8mb4 COLLATE ut
 USE `blog_db`;
 
 -- 先删旧表，保证脚本可重复执行
+DROP TABLE IF EXISTS `message`;
 DROP TABLE IF EXISTS `user_follow`;
 DROP TABLE IF EXISTS `post_favorite`;
 DROP TABLE IF EXISTS `post_like`;
@@ -82,6 +83,22 @@ CREATE TABLE `user_follow` (
   UNIQUE KEY `uk_follow_pair` (`follower`, `following`),
   KEY `idx_following` (`following`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '关注关系表';
+
+-- ------------------------------------------------------------
+-- 私信消息表（sender 发给 receiver 的一条私信）
+-- ------------------------------------------------------------
+CREATE TABLE `message` (
+  `id`         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '消息ID',
+  `sender`     VARCHAR(50)  NOT NULL                COMMENT '发送者用户名',
+  `receiver`   VARCHAR(50)  NOT NULL                COMMENT '接收者用户名',
+  `content`    VARCHAR(1000) NOT NULL               COMMENT '消息内容',
+  `is_read`    TINYINT(1)   NOT NULL DEFAULT 0      COMMENT '接收者是否已读（0未读 1已读）',
+  `created_at` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_receiver` (`receiver`, `is_read`),
+  KEY `idx_pair` (`sender`, `receiver`),
+  KEY `idx_pair_rev` (`receiver`, `sender`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '私信消息表';
 
 -- ------------------------------------------------------------
 -- 种子数据：用户（密码统一为 123456，仅演示用）

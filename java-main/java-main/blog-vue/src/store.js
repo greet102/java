@@ -119,6 +119,35 @@ function closeChat() {
   fetchUnread()
 }
 
+/** 打开私信面板（会话列表视图，不进入具体对话） */
+async function openChatList() {
+  if (!state.currentUser) return
+  state.chatWith = ''
+  state.thread = []
+  state.chatOpen = true
+  await fetchConversations()
+  await fetchUnread()
+}
+
+// 未读私信轮询：登录后每 15 秒刷新一次未读数（轻量，仅拉一个数字）
+let msgTimer = null
+function startMsgSync() {
+  fetchUnread()
+  fetchConversations()
+  if (msgTimer) clearInterval(msgTimer)
+  msgTimer = setInterval(() => {
+    if (state.currentUser) fetchUnread()
+  }, 15000)
+}
+function stopMsgSync() {
+  if (msgTimer) {
+    clearInterval(msgTimer)
+    msgTimer = null
+  }
+  state.unread = 0
+  state.conversations = []
+}
+
 /** 发一条私信 */
 async function sendDM(username, content) {
   const text = (content || '').trim()
@@ -130,6 +159,7 @@ async function sendDM(username, content) {
   if (!res.ok) return false
   await fetchThread(username)
   await fetchConversations()
+  await fetchUnread()
   return true
 }
 
@@ -147,6 +177,7 @@ async function register(user, pass) {
   localStorage.setItem(K_CUR, user)
   await fetchPosts()
   await fetchMyProfile()
+  startMsgSync()
   return res
 }
 
@@ -161,11 +192,13 @@ async function login(user, pass) {
   localStorage.setItem(K_CUR, user)
   await fetchPosts()
   await fetchMyProfile()
+  startMsgSync()
   return res
 }
 
 async function logout() {
   await api('/auth/logout', { method: 'POST' })
+  stopMsgSync()
   state.currentUser = ''
   localStorage.removeItem(K_CUR)
   state.posts = []
@@ -364,6 +397,7 @@ if (state.currentUser) {
     if (res.ok && res.data) {
       fetchPosts()
       fetchMyProfile()
+      startMsgSync()
       if (typeof location !== 'undefined' && /^#\/u\/.+$/.test(location.hash)) applyHash()
     } else {
       state.currentUser = ''
@@ -397,5 +431,13 @@ export function useStore() {
     timeAgo,
     colorOf,
     esc,
+    // 私信
+    fetchUnread,
+    fetchConversations,
+    fetchThread,
+    openChat,
+    openChatList,
+    closeChat,
+    sendDM,
   }
 }

@@ -9,7 +9,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['back', 'edit', 'toast'])
 
-const { state, fetchProfile, toggleFollow, openProfile, updateProfile, timeAgo } = useStore()
+const { state, fetchProfile, toggleFollow, openProfile, updateProfile, timeAgo, openChat } = useStore()
 
 const profile = computed(() => state.profile)
 const isSelf = computed(() => !!state.currentUser && state.currentUser === props.username)
@@ -39,6 +39,14 @@ async function onFollow() {
   }
   const ok = await toggleFollow(props.username)
   emit('toast', ok ? (isFollowing.value ? '已关注 💞' : '已取消关注') : '操作失败，请稍后重试喵～')
+}
+
+function onDM() {
+  if (!state.currentUser) {
+    emit('toast', '请先登录喵～')
+    return
+  }
+  openChat(props.username)
 }
 
 // ---- 编辑资料 ----
@@ -83,6 +91,7 @@ async function saveEdit() {
           <button class="pv-btn" :class="{ followed: isFollowing }" @click="onFollow">
             {{ isFollowing ? '✓ 已关注' : '＋ 关注' }}
           </button>
+          <button v-if="isFollowing" class="pv-btn ghost" @click="onDM">💌 私信</button>
         </template>
       </div>
 

@@ -6,8 +6,9 @@ import PostCard from './PostCard.vue'
 import PostModal from './PostModal.vue'
 import ProfileView from './ProfileView.vue'
 import UserRow from './UserRow.vue'
+import ChatView from './ChatView.vue'
 
-const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome } = useStore()
+const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome, openChatList } = useStore()
 
 const showModal = ref(false)
 const editing = ref(null) // 非 null 时为编辑模式
@@ -87,6 +88,10 @@ async function handleSubmit(payload) {
       </div>
       <div class="topbar-right">
         <button class="btn btn-ghost" @click="openNew">✏️ 写新文章</button>
+        <button class="btn btn-ghost dm-btn" @click="openChatList">
+          💌 私信
+          <span v-if="state.unread" class="dm-badge">{{ state.unread }}</span>
+        </button>
         <div class="avatar clickable" @click="openProfile(me)">
           {{ state.myProfile?.avatar || me?.[0] || '🐾' }}
         </div>
@@ -144,6 +149,8 @@ async function handleSubmit(payload) {
 
     <PostModal v-if="showModal" :post="editing" @close="showModal = false" @submit="handleSubmit" />
 
+    <ChatView v-if="state.chatOpen" />
+
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
 </template>
@@ -170,5 +177,24 @@ async function handleSubmit(payload) {
 @media (max-width: 560px) {
   .feed-head { flex-wrap: wrap; }
   .search-input { margin-left: 0; width: 100%; max-width: 100%; }
+}
+
+.dm-btn {
+  position: relative;
+}
+.dm-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ff5c8a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
 }
 </style>

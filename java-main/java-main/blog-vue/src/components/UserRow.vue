@@ -7,7 +7,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['toast'])
 
-const { state, toggleFollow, openProfile } = useStore()
+const { state, toggleFollow, openProfile, openChat } = useStore()
 
 const isSelf = computed(() => state.currentUser === props.user.username)
 const avatar = computed(() => props.user.avatar || '🐱')
@@ -24,6 +24,18 @@ async function onFollow() {
   const ok = await toggleFollow(props.user.username)
   emit('toast', ok ? (was ? '已取消关注' : '已关注 💞') : '操作失败，请稍后重试喵～')
 }
+
+async function onDM() {
+  if (!state.currentUser) {
+    emit('toast', '请先登录喵～')
+    return
+  }
+  if (!followed.value) {
+    emit('toast', '关注后才能给 TA 发私信喵～')
+    return
+  }
+  openChat(props.user.username)
+}
 </script>
 
 <template>
@@ -33,6 +45,7 @@ async function onFollow() {
       <div class="ur-name">{{ nickname }}</div>
       <div class="ur-sub">@{{ user.username }} · {{ user.slogan || '这个人很懒，什么也没写～' }}</div>
     </div>
+    <button v-if="!isSelf" class="ur-dm" :class="{ disabled: !followed }" :title="followed ? '发私信' : '关注后才能私信'" @click="onDM">💌</button>
     <button v-if="!isSelf" class="ur-follow" :class="{ followed }" @click="onFollow">
       {{ followed ? '✓ 已关注' : '＋ 关注' }}
     </button>
@@ -93,6 +106,30 @@ async function onFollow() {
 .ur-follow.followed {
   background: #e9dcef;
   color: #8a7a95;
+}
+.ur-dm {
+  flex: 0 0 auto;
+  border: none;
+  background: #fff0f6;
+  color: #c98bb0;
+  font-size: 16px;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  cursor: pointer;
+  transition: transform 0.12s, background 0.12s;
+}
+.ur-dm:hover {
+  transform: translateY(-1px);
+  background: #ffe3ef;
+}
+.ur-dm.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ur-dm.disabled:hover {
+  transform: none;
+  background: #fff0f6;
 }
 .ur-self {
   flex: 0 0 auto;
