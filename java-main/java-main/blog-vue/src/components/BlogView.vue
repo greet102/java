@@ -59,6 +59,11 @@ function onLogout() {
   showToast('已退出，下次见喵～')
 }
 
+// 跳转到后台管理系统（未登录后台会先到登录页）
+function openAdmin() {
+  location.hash = '#/admin'
+}
+
 function openNew() {
   editing.value = null
   showModal.value = true
@@ -87,6 +92,7 @@ async function handleSubmit(payload) {
         <span class="topbar-name">喵喵博客</span>
       </div>
       <div class="topbar-right">
+        <button class="btn btn-ghost" @click="openAdmin">🛠 后台管理</button>
         <button class="btn btn-ghost" @click="openNew">✏️ 写新文章</button>
         <button class="btn btn-ghost dm-btn" @click="openChatList">
           💌 私信

@@ -193,6 +193,11 @@ async function doRegister() {
         <button type="submit" class="btn btn-primary">注 册</button>
         <p class="switch">已经有账号啦？<a href="#" @click.prevent="switchMode('login')">去登录 ←</a></p>
       </form>
+
+      <!-- 前台登录/注册页也能随时进入后台管理系统 -->
+      <p class="switch admin-entry">
+        <a href="#" @click.prevent="location.hash = '#/admin'">🛠 进入后台管理</a>
+      </p>
     </div>
   </main>
 </template>

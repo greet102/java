@@ -2,11 +2,20 @@ package com.fenglin.springboottest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fenglin.springboottest.common.BizException;
+import com.fenglin.springboottest.dto.AdminStatsVO;
 import com.fenglin.springboottest.dto.ProfileVO;
 import com.fenglin.springboottest.dto.UserSummary;
+import com.fenglin.springboottest.entity.Message;
+import com.fenglin.springboottest.entity.Post;
+import com.fenglin.springboottest.entity.PostFavorite;
+import com.fenglin.springboottest.entity.PostLike;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.entity.UserFollow;
 import com.fenglin.springboottest.mapper.FollowMapper;
+import com.fenglin.springboottest.mapper.MessageMapper;
+import com.fenglin.springboottest.mapper.PostFavoriteMapper;
+import com.fenglin.springboottest.mapper.PostLikeMapper;
+import com.fenglin.springboottest.mapper.PostMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +38,10 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final FollowMapper followMapper;
+    private final PostMapper postMapper;
+    private final PostLikeMapper postLikeMapper;
+    private final PostFavoriteMapper postFavoriteMapper;
+    private final MessageMapper messageMapper;
 
     /**
      * 注册（成功后由控制器写入会话，实现自动登录）
@@ -191,6 +204,87 @@ public class UserService {
             }
         }
         userMapper.updateById(u);
+    }
+
+    // ===================== 后台管理（管理员对前台用户数据的维护） =====================
+
+    /** 数据概览：用户数、文章数、关注关系数、今日新增用户 */
+    public AdminStatsVO adminStats() {
+        AdminStatsVO vo = new AdminStatsVO();
+        vo.setUserCount(userMapper.selectCount(null));
+        vo.setPostCount(postMapper.selectCount(null));
+        vo.setFollowCount(followMapper.selectCount(null));
+        long today = userMapper.selectCount(
+                new QueryWrapper<User>().apply("DATE(created_at) = CURDATE()"));
+        vo.setTodayUserCount(today);
+        return vo;
+    }
+
+    /** 用户分页列表，支持按用户名 / 昵称模糊搜索，按注册时间倒序（手动分页，避免依赖分页插件） */
+    public Map<String, Object> adminListUsers(String keyword, long page, long size) {
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        if (size > 100) size = 100;
+        QueryWrapper<User> w = new QueryWrapper<>();
+        if (keyword != null && !keyword.isBlank()) {
+            w.like("username", keyword).or().like("nickname", keyword);
+        }
+        w.orderByDesc("created_at");
+        long total = userMapper.selectCount(w);
+        long offset = (page - 1) * size;
+        // 复用同一查询条件，仅追加 LIMIT 做分页
+        w.last("LIMIT " + offset + ", " + size);
+        List<User> records = userMapper.selectList(w);
+        Map<String, Object> data = new HashMap<>();
+        data.put("records", records);
+        data.put("total", total);
+        data.put("current", page);
+        data.put("size", size);
+        return data;
+    }
+
+    /** 编辑用户资料，password 字段为空则不修改密码 */
+    public void adminUpdateUser(String username, Map<String, Object> form) {
+        User u = getUser(username);
+        if (u == null) {
+            throw new BizException("用户不存在喵～");
+        }
+        if (form.containsKey("nickname")) u.setNickname(str(form.get("nickname")));
+        if (form.containsKey("slogan")) u.setSlogan(str(form.get("slogan")));
+        if (form.containsKey("bio")) u.setBio(str(form.get("bio")));
+        if (form.containsKey("avatar")) u.setAvatar(str(form.get("avatar")));
+        if (form.containsKey("location")) u.setLocation(str(form.get("location")));
+        if (form.containsKey("password")) {
+            String pw = str(form.get("password"));
+            if (pw != null && !pw.isEmpty()) u.setPassword(pw);
+        }
+        userMapper.updateById(u);
+    }
+
+    /** 删除用户，并级联清理其文章、点赞、收藏、关注关系、私信，避免脏数据 */
+    public void adminDeleteUser(String username) {
+        User u = getUser(username);
+        if (u == null) {
+            throw new BizException("用户不存在喵～");
+        }
+        // 1) 该用户发布的文章：先删文章的点赞 / 收藏，再删文章
+        List<Post> posts = postMapper.selectList(new QueryWrapper<Post>().eq("author", username));
+        for (Post post : posts) {
+            postLikeMapper.delete(new QueryWrapper<PostLike>().eq("post_id", post.getId()));
+            postFavoriteMapper.delete(new QueryWrapper<PostFavorite>().eq("post_id", post.getId()));
+        }
+        postMapper.delete(new QueryWrapper<Post>().eq("author", username));
+        // 2) 该用户发出的点赞 / 收藏
+        postLikeMapper.delete(new QueryWrapper<PostLike>().eq("username", username));
+        postFavoriteMapper.delete(new QueryWrapper<PostFavorite>().eq("username", username));
+        // 3) 关注关系（作为关注者与被关注者）
+        followMapper.delete(new QueryWrapper<UserFollow>().eq("follower", username));
+        followMapper.delete(new QueryWrapper<UserFollow>().eq("following", username));
+        // 4) 私信（收发）
+        messageMapper.delete(new QueryWrapper<Message>().eq("sender", username));
+        messageMapper.delete(new QueryWrapper<Message>().eq("receiver", username));
+        // 5) 用户本身
+        userMapper.deleteById(u.getId());
     }
 
     private String str(Object o) {

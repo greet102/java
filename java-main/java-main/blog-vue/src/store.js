@@ -12,6 +12,8 @@ const COLORS = ['#ff9ec4', '#ffd6a5', '#b8f2d8', '#cdb4f6', '#a0e7ff']
 
 const state = reactive({
   currentUser: localStorage.getItem(K_CUR) || '',
+  isAdmin: false, // 是否已登录后台
+  adminUser: '', // 当前后台管理员账号
   posts: [],
   filter: 'all', // all | mine | liked | faved
   view: 'home', // home | profile
@@ -210,6 +212,64 @@ async function logout() {
   syncHash()
 }
 
+// ---------- 后台管理（独立会话，与前端用户登录互不干扰） ----------
+async function adminLogin(user, pass) {
+  user = (user || '').trim()
+  const res = await api('/admin/login', {
+    method: 'POST',
+    body: { username: user, password: pass },
+  })
+  if (!res.ok) return res
+  state.isAdmin = true
+  state.adminUser = user
+  return res
+}
+
+async function adminLogout() {
+  await api('/admin/logout', { method: 'POST' })
+  state.isAdmin = false
+  state.adminUser = ''
+}
+
+/** 查询后台登录态（用于刷新后恢复会话 / 进入控制台前校验） */
+async function adminMe() {
+  const res = await api('/admin/me')
+  if (res.ok) {
+    state.isAdmin = true
+    state.adminUser = res.data
+  }
+  return res
+}
+
+/** 数据概览 */
+async function fetchAdminStats() {
+  const res = await api('/admin/stats')
+  return res
+}
+
+/** 用户分页列表 */
+async function fetchAdminUsers({ keyword = '', page = 1, size = 10 } = {}) {
+  const res = await api(
+    `/admin/users?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}`
+  )
+  return res
+}
+
+/** 编辑用户资料 / 重置密码 */
+async function updateAdminUser(username, form) {
+  return await api(`/admin/users/${encodeURIComponent(username)}`, {
+    method: 'PUT',
+    body: form,
+  })
+}
+
+/** 删除用户（级联） */
+async function deleteAdminUser(username) {
+  return await api(`/admin/users/${encodeURIComponent(username)}`, {
+    method: 'DELETE',
+  })
+}
+
 // ---------- 文章 ----------
 async function addPost({ title, body, emoji }) {
   title = (title || '').trim()
@@ -346,7 +406,10 @@ function syncHash() {
 
 function applyHash() {
   if (typeof location === 'undefined' || !state.currentUser) return
-  const m = /^#\/u\/(.+)$/.exec(location.hash)
+  const h = location.hash
+  // 后台管理路由（#/admin*）由 App.vue 单独处理，这里不要干涉，否则会覆盖导航
+  if (h.startsWith('#/admin')) return
+  const m = /^#\/u\/(.+)$/.exec(h)
   if (m) {
     openProfile(decodeURIComponent(m[1]))
   } else if (state.view === 'profile') {
@@ -418,6 +481,14 @@ export function useStore() {
     register,
     login,
     logout,
+    // 后台管理
+    adminLogin,
+    adminLogout,
+    adminMe,
+    fetchAdminStats,
+    fetchAdminUsers,
+    updateAdminUser,
+    deleteAdminUser,
     addPost,
     updatePost,
     toggleLike,
