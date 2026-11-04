@@ -43,6 +43,7 @@ public class UserService {
     private final PostFavoriteMapper postFavoriteMapper;
     private final MessageMapper messageMapper;
     private final CommentService commentService;
+    private final NotificationService notificationService;
 
     /**
      * 注册（成功后由控制器写入会话，实现自动登录）
@@ -192,6 +193,8 @@ public class UserService {
             f.setCreatedAt(LocalDateTime.now());
             followMapper.insert(f);
             data.put("following", true);
+            // 新关注：通知被关注者
+            notificationService.notify(target, follower, "follow", null, null, null);
         }
         long followerCount = followMapper.selectCount(
                 new QueryWrapper<UserFollow>().eq("following", target));
@@ -308,7 +311,10 @@ public class UserService {
         // 4) 私信（收发）
         messageMapper.delete(new QueryWrapper<Message>().eq("sender", username));
         messageMapper.delete(new QueryWrapper<Message>().eq("receiver", username));
-        // 5) 用户本身
+        // 5) 通知：TA 收到的 + 由 TA 触发的
+        notificationService.deleteByUser(username);
+        notificationService.deleteByActor(username);
+        // 6) 用户本身
         userMapper.deleteById(u.getId());
     }
 

@@ -8,7 +8,7 @@ import ProfileView from './ProfileView.vue'
 import UserRow from './UserRow.vue'
 import ChatView from './ChatView.vue'
 
-const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome, openChatList, isAdminUser } = useStore()
+const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome, openChatList, isAdminUser, openNotif, closeNotif, markAllNotifRead } = useStore()
 
 const showModal = ref(false)
 const editing = ref(null) // 非 null 时为编辑模式
@@ -18,6 +18,40 @@ let toastTimer = null
 
 const me = computed(() => state.currentUser)
 const titles = { all: '全部文章', mine: '我的文章', liked: '我点赞的', faved: '我的收藏' }
+
+// ---------- 消息通知 ----------
+const NOTIF_ICONS = { like: '💖', favorite: '🔖', comment: '💬', follow: '➕' }
+
+function notifText(n) {
+  switch (n.type) {
+    case 'like':
+      return `赞了你的文章《${n.postTitle || '未知文章'}》`
+    case 'favorite':
+      return `收藏了你的文章《${n.postTitle || '未知文章'}》`
+    case 'comment':
+      return `评论了你的文章《${n.postTitle || '未知文章'}》：${n.content || ''}`
+    case 'follow':
+      return '关注了你'
+    default:
+      return '和你互动了'
+  }
+}
+
+function fmtNotifTime(v) {
+  if (!v) return ''
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleString('zh-CN', { hour12: false })
+}
+
+function toggleNotif() {
+  if (state.notifOpen) closeNotif()
+  else openNotif()
+}
+
+function clickNotifActor(actor) {
+  closeNotif()
+  openProfile(actor)
+}
 
 // “我的关注”展示的是人而不是文章，单独走一个分支
 const isFollowingView = computed(() => state.filter === 'following' && state.view === 'home')
@@ -98,6 +132,37 @@ async function handleSubmit(payload) {
           💌 私信
           <span v-if="state.unread" class="dm-badge">{{ state.unread }}</span>
         </button>
+        <div class="notif-wrap">
+          <button class="btn btn-ghost dm-btn" @click="toggleNotif">
+            🔔 通知
+            <span v-if="state.notifUnread" class="dm-badge">{{ state.notifUnread }}</span>
+          </button>
+          <!-- 通知下拉面板 -->
+          <div v-if="state.notifOpen" class="notif-panel">
+            <div class="notif-head">
+              <span>🔔 消息通知</span>
+              <button class="notif-readall" @click="markAllNotifRead">全部已读</button>
+            </div>
+            <div class="notif-list">
+              <div
+                v-for="n in state.notifications"
+                :key="n.id"
+                class="notif-item"
+                :class="{ unread: !n.isRead }"
+              >
+                <span class="notif-icon">{{ NOTIF_ICONS[n.type] || '✨' }}</span>
+                <div class="notif-main">
+                  <span class="notif-actor link" @click="clickNotifActor(n.actor)">{{ n.actor }}</span>
+                  <span class="notif-text">{{ notifText(n) }}</span>
+                  <span class="notif-time">{{ fmtNotifTime(n.createdAt) }}</span>
+                </div>
+              </div>
+              <div v-if="!state.notifications.length" class="notif-empty">
+                还没有通知，去和别人互动吧～
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="avatar clickable" @click="openProfile(me)">
           {{ state.myProfile?.avatar || me?.[0] || '🐾' }}
         </div>
@@ -202,5 +267,108 @@ async function handleSubmit(payload) {
   font-weight: 700;
   display: grid;
   place-items: center;
+}
+
+/* ---------- 消息通知面板 ---------- */
+.notif-wrap {
+  position: relative;
+}
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 330px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: #fffdf9;
+  border: 2px solid #f0d7ee;
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(150, 110, 200, 0.18);
+  z-index: 60;
+  overflow: hidden;
+}
+.notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--ink);
+  border-bottom: 2px dashed #f0d7ee;
+}
+.notif-readall {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #a06cd5;
+  font-family: inherit;
+  font-weight: 700;
+  padding: 0;
+}
+.notif-readall:hover {
+  color: var(--pink);
+}
+.notif-list {
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notif-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: #fff;
+  transition: background 0.15s;
+}
+.notif-item:hover {
+  background: #faf3ff;
+}
+.notif-item.unread {
+  background: #fdf1f7;
+}
+.notif-item.unread .notif-text {
+  font-weight: 700;
+}
+.notif-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: #f6effb;
+  border-radius: 50%;
+  font-size: 15px;
+}
+.notif-main {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.notif-actor {
+  font-weight: 700;
+  margin-right: 4px;
+}
+.notif-text {
+  word-break: break-word;
+}
+.notif-time {
+  display: block;
+  font-size: 11px;
+  color: #b3a8c9;
+  margin-top: 2px;
+}
+.notif-empty {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 24px 0;
 }
 </style>

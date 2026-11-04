@@ -33,6 +33,25 @@ CREATE TABLE `comment`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for notification
+-- ----------------------------
+DROP TABLE IF EXISTS `notification`;
+CREATE TABLE `notification`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '通知ID',
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '接收通知的用户名',
+  `actor` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '触发通知的用户名',
+  `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '类型：like/favorite/comment/follow',
+  `post_id` bigint NULL DEFAULT NULL COMMENT '相关文章ID（follow 为 NULL）',
+  `post_title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '文章标题快照',
+  `content` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '评论摘要（仅 comment 类型）',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读（0未读 1已读）',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '通知时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_user`(`username` ASC, `is_read` ASC) USING BTREE,
+  INDEX `idx_post`(`post_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '消息通知表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Records of comment
 -- ----------------------------
 INSERT INTO `comment` VALUES (5, 1, 'xx', '嘻嘻嘻', '2026-11-04 09:30:54');

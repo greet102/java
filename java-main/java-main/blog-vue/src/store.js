@@ -29,6 +29,11 @@ const state = reactive({
   chatOpen: false, // 私信窗口是否打开
   chatWith: '', // 当前正在聊的人
   thread: [], // 当前会话的消息列表
+
+  // 消息通知相关
+  notifications: [], // 最近通知列表
+  notifUnread: 0, // 未读通知数
+  notifOpen: false, // 通知面板是否打开
 })
 
 const isLoggedIn = computed(() => !!state.currentUser)
@@ -141,9 +146,13 @@ let msgTimer = null
 function startMsgSync() {
   fetchUnread()
   fetchConversations()
+  fetchNotifUnread()
   if (msgTimer) clearInterval(msgTimer)
   msgTimer = setInterval(() => {
-    if (state.currentUser) fetchUnread()
+    if (state.currentUser) {
+      fetchUnread()
+      fetchNotifUnread()
+    }
   }, 15000)
 }
 function stopMsgSync() {
@@ -153,6 +162,46 @@ function stopMsgSync() {
   }
   state.unread = 0
   state.conversations = []
+  state.notifications = []
+  state.notifUnread = 0
+  state.notifOpen = false
+}
+
+// ---------- 消息通知（点赞 / 收藏 / 评论 / 关注） ----------
+/** 拉取未读通知数 */
+async function fetchNotifUnread() {
+  if (!state.currentUser) {
+    state.notifUnread = 0
+    return
+  }
+  const res = await api('/notifications/unread')
+  if (res.ok) state.notifUnread = res.data || 0
+}
+
+/** 拉取最近通知列表 */
+async function fetchNotifications() {
+  const res = await api('/notifications')
+  if (res.ok) state.notifications = res.data || []
+}
+
+/** 打开通知面板：拉取列表并全部标记已读 */
+async function openNotif() {
+  state.notifOpen = true
+  await fetchNotifications()
+  await markAllNotifRead()
+}
+
+function closeNotif() {
+  state.notifOpen = false
+}
+
+/** 全部标记为已读 */
+async function markAllNotifRead() {
+  const res = await api('/notifications/read', { method: 'POST' })
+  if (res.ok) {
+    state.notifUnread = 0
+    state.notifications.forEach((n) => (n.isRead = 1))
+  }
 }
 
 /** 发一条私信 */
@@ -542,6 +591,12 @@ export function useStore() {
     addComment,
     deleteComment,
     deletePost,
+    // 消息通知
+    fetchNotifUnread,
+    fetchNotifications,
+    openNotif,
+    closeNotif,
+    markAllNotifRead,
     setFilter,
     toggleFollow,
     openProfile,

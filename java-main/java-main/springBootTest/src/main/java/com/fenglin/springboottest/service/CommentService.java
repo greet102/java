@@ -28,6 +28,7 @@ public class CommentService {
     private final CommentMapper commentMapper;
     private final PostMapper postMapper;
     private final UserMapper userMapper;
+    private final NotificationService notificationService;
 
     /** 某篇文章的评论列表（时间正序，最早的在前） */
     public List<CommentVO> listByPost(Long postId) {
@@ -64,6 +65,10 @@ public class CommentService {
         c.setContent(content);
         c.setCreatedAt(LocalDateTime.now());
         commentMapper.insert(c);
+        // 通知文章作者（附评论摘要，截断到 50 字）
+        String excerpt = content.length() > 50 ? content.substring(0, 50) + "…" : content;
+        notificationService.notify(post.getAuthor(), username, "comment",
+                postId, post.getTitle(), excerpt);
         return toVO(c, userMapper.selectOne(
                 new QueryWrapper<User>().eq("username", username)));
     }

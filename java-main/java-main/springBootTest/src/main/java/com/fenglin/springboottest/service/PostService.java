@@ -30,6 +30,7 @@ public class PostService {
     private final PostLikeMapper postLikeMapper;
     private final PostFavoriteMapper favoriteMapper;
     private final CommentService commentService;
+    private final NotificationService notificationService;
 
     /**
      * 查询全部文章（按时间倒序），并把点赞 / 收藏用户拼装成数组
@@ -114,6 +115,7 @@ public class PostService {
         favoriteMapper.delete(
                 new QueryWrapper<PostFavorite>().eq("post_id", id));
         commentService.deleteByPost(id);
+        notificationService.deleteByPost(id);
     }
 
     /**
@@ -121,7 +123,7 @@ public class PostService {
      */
     @Transactional
     public List<String> toggleLike(String username, Long id) {
-        assertPostExists(id);
+        Post post = requirePost(id);
         PostLike exist = postLikeMapper.selectOne(
                 new QueryWrapper<PostLike>()
                         .eq("post_id", id)
@@ -133,6 +135,9 @@ public class PostService {
             like.setPostId(id);
             like.setUsername(username);
             postLikeMapper.insert(like);
+            // 首次点赞：通知文章作者
+            notificationService.notify(post.getAuthor(), username, "like",
+                    id, post.getTitle(), null);
         }
         return postLikeMapper.selectList(
                         new QueryWrapper<PostLike>().eq("post_id", id))
@@ -146,7 +151,7 @@ public class PostService {
      */
     @Transactional
     public List<String> toggleFavorite(String username, Long id) {
-        assertPostExists(id);
+        Post post = requirePost(id);
         PostFavorite exist = favoriteMapper.selectOne(
                 new QueryWrapper<PostFavorite>()
                         .eq("post_id", id)
@@ -158,6 +163,9 @@ public class PostService {
             fav.setPostId(id);
             fav.setUsername(username);
             favoriteMapper.insert(fav);
+            // 首次收藏：通知文章作者
+            notificationService.notify(post.getAuthor(), username, "favorite",
+                    id, post.getTitle(), null);
         }
         return favoriteMapper.selectList(
                         new QueryWrapper<PostFavorite>().eq("post_id", id))
@@ -226,9 +234,12 @@ public class PostService {
         return post;
     }
 
-    private void assertPostExists(Long id) {
-        if (postMapper.selectById(id) == null) {
+    /** 取文章，不存在则抛异常 */
+    private Post requirePost(Long id) {
+        Post post = postMapper.selectById(id);
+        if (post == null) {
             throw new BizException("文章不见了喵");
         }
+        return post;
     }
 }

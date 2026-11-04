@@ -116,6 +116,24 @@ CREATE TABLE `comment` (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '评论表';
 
 -- ------------------------------------------------------------
+-- 消息通知表（点赞 / 收藏 / 评论 / 关注触发）
+-- ------------------------------------------------------------
+CREATE TABLE `notification` (
+  `id`          BIGINT        NOT NULL AUTO_INCREMENT COMMENT '通知ID',
+  `username`    VARCHAR(50)   NOT NULL                COMMENT '接收通知的用户名',
+  `actor`       VARCHAR(50)   NOT NULL                COMMENT '触发通知的用户名',
+  `type`        VARCHAR(20)   NOT NULL                COMMENT '类型：like/favorite/comment/follow',
+  `post_id`     BIGINT        NULL DEFAULT NULL       COMMENT '相关文章ID（follow 为 NULL）',
+  `post_title`  VARCHAR(200)  NULL DEFAULT NULL       COMMENT '文章标题快照',
+  `content`     VARCHAR(100)  NULL DEFAULT NULL       COMMENT '评论摘要（仅 comment 类型）',
+  `is_read`     TINYINT(1)    NOT NULL DEFAULT 0      COMMENT '是否已读（0未读 1已读）',
+  `created_at`  DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '通知时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`username`, `is_read`),
+  KEY `idx_post` (`post_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '消息通知表';
+
+-- ------------------------------------------------------------
 -- 种子数据：用户（密码统一为 123456，仅演示用）
 -- ------------------------------------------------------------
 INSERT INTO `user` (`username`, `password`) VALUES
