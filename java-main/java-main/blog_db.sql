@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 04/11/2026 09:32:02
+ Date: 04/11/2026 09:57:23
 */
 
 SET NAMES utf8mb4;
@@ -30,26 +30,7 @@ CREATE TABLE `comment`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_post`(`post_id` ASC) USING BTREE,
   INDEX `idx_user`(`username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for notification
--- ----------------------------
-DROP TABLE IF EXISTS `notification`;
-CREATE TABLE `notification`  (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '通知ID',
-  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '接收通知的用户名',
-  `actor` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '触发通知的用户名',
-  `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '类型：like/favorite/comment/follow',
-  `post_id` bigint NULL DEFAULT NULL COMMENT '相关文章ID（follow 为 NULL）',
-  `post_title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '文章标题快照',
-  `content` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '评论摘要（仅 comment 类型）',
-  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读（0未读 1已读）',
-  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '通知时间',
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_user`(`username` ASC, `is_read` ASC) USING BTREE,
-  INDEX `idx_post`(`post_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '消息通知表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of comment
@@ -78,6 +59,29 @@ CREATE TABLE `message`  (
 -- ----------------------------
 INSERT INTO `message` VALUES (4, '咪咪', 'xx', '你好呀', 1, '2026-10-30 16:26:40');
 INSERT INTO `message` VALUES (6, 'xx', '咪咪', '你好', 1, '2026-10-30 16:27:29');
+
+-- ----------------------------
+-- Table structure for notification
+-- ----------------------------
+DROP TABLE IF EXISTS `notification`;
+CREATE TABLE `notification`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '通知ID',
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '接收通知的用户名',
+  `actor` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '触发通知的用户名',
+  `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '类型：like/favorite/comment/follow',
+  `post_id` bigint NULL DEFAULT NULL COMMENT '相关文章ID（follow 为 NULL）',
+  `post_title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '文章标题快照',
+  `content` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '评论摘要（仅 comment 类型）',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读（0未读 1已读）',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '通知时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_user`(`username` ASC, `is_read` ASC) USING BTREE,
+  INDEX `idx_post`(`post_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '消息通知表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of notification
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for post
@@ -112,7 +116,7 @@ CREATE TABLE `post_favorite`  (
   `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '收藏用户名',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_post_user_fav`(`post_id` ASC, `username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '收藏表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '收藏表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of post_favorite
@@ -128,12 +132,11 @@ CREATE TABLE `post_like`  (
   `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '点赞用户名',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_post_user`(`post_id` ASC, `username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '点赞表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '点赞表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of post_like
 -- ----------------------------
-INSERT INTO `post_like` VALUES (1, 1, '喵站长');
 INSERT INTO `post_like` VALUES (2, 2, '喵站长');
 INSERT INTO `post_like` VALUES (3, 2, '奶油喵');
 INSERT INTO `post_like` VALUES (4, 3, '喵站长');
@@ -156,7 +159,7 @@ CREATE TABLE `user`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
@@ -166,6 +169,7 @@ INSERT INTO `user` VALUES (2, '奶油喵', '123456', 1, '🐱', NULL, NULL, NULL
 INSERT INTO `user` VALUES (3, '星星', '123456', 1, '🐱', NULL, NULL, NULL, NULL, NULL, '2026-10-28 09:11:04');
 INSERT INTO `user` VALUES (4, 'xx', '1234', 0, '🐱', 'xx', '这个人很懒，什么也没写', '', '喵星', NULL, '2026-10-28 09:26:45');
 INSERT INTO `user` VALUES (10, '咪咪', '1111', 1, '🐱', '咪咪', '这个人很懒，什么也没写～', '', '', NULL, '2026-10-30 16:26:21');
+INSERT INTO `user` VALUES (14, 'admin', 'admin123', 0, '🛠️', '管理员', '这个人很懒，什么也没写～', '', '', NULL, '2026-11-04 09:35:01');
 
 -- ----------------------------
 -- Table structure for user_follow
@@ -179,7 +183,7 @@ CREATE TABLE `user_follow`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_follow_pair`(`follower` ASC, `following` ASC) USING BTREE,
   INDEX `idx_following`(`following` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '关注关系表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '关注关系表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user_follow
@@ -188,6 +192,6 @@ INSERT INTO `user_follow` VALUES (1, '喵站长', '奶油喵', '2026-10-28 09:11
 INSERT INTO `user_follow` VALUES (3, '喵站长', '星星', '2026-10-28 09:12:54');
 INSERT INTO `user_follow` VALUES (5, 'xx', '喵站长', '2026-10-28 09:27:50');
 INSERT INTO `user_follow` VALUES (6, 'xx', '奶油喵', '2026-10-28 09:28:06');
-INSERT INTO `user_follow` VALUES (9, '咪咪', 'xx', '2026-10-30 16:26:27');
+INSERT INTO `user_follow` VALUES (10, '咪咪', 'xx', '2026-11-04 09:51:21');
 
 SET FOREIGN_KEY_CHECKS = 1;
