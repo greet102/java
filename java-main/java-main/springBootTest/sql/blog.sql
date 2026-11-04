@@ -23,6 +23,7 @@ CREATE TABLE `user` (
   `id`         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户ID',
   `username`   VARCHAR(50)  NOT NULL                COMMENT '用户名',
   `password`   VARCHAR(100) NOT NULL                COMMENT '密码（演示项目，明文存储）',
+  `permission` TINYINT      NOT NULL DEFAULT 1     COMMENT '权限：1=普通用户（默认），0=管理员',
   `avatar`    VARCHAR(16)            DEFAULT '🐱'  COMMENT '头像（用一个表情充当）',
   `nickname`  VARCHAR(50)            DEFAULT NULL   COMMENT '昵称，为空时回退显示用户名',
   `slogan`    VARCHAR(100)           DEFAULT NULL   COMMENT '个人主页标语',
@@ -101,12 +102,30 @@ CREATE TABLE `message` (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '私信消息表';
 
 -- ------------------------------------------------------------
+-- 评论表（用户在文章下发表评论；comment 是 MySQL 保留字，表名需反引号）
+-- ------------------------------------------------------------
+CREATE TABLE `comment` (
+  `id`         BIGINT        NOT NULL AUTO_INCREMENT COMMENT '评论ID',
+  `post_id`    BIGINT        NOT NULL                COMMENT '文章ID',
+  `username`   VARCHAR(50)   NOT NULL                COMMENT '评论者用户名',
+  `content`    VARCHAR(500)  NOT NULL                COMMENT '评论内容',
+  `created_at` DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_post` (`post_id`),
+  KEY `idx_user` (`username`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '评论表';
+
+-- ------------------------------------------------------------
 -- 种子数据：用户（密码统一为 123456，仅演示用）
 -- ------------------------------------------------------------
 INSERT INTO `user` (`username`, `password`) VALUES
 ('喵站长', '123456'),
 ('奶油喵', '123456'),
 ('星星',   '123456');
+
+-- 内置管理员账号（权限 0 = 管理员，其余用户默认 1 = 普通用户）
+INSERT INTO `user` (`username`, `password`, `permission`, `nickname`) VALUES
+('admin', 'admin123', 0, '管理员');
 
 -- ------------------------------------------------------------
 -- 种子数据：关注关系（喵站长关注了奶油喵和星星）

@@ -21,6 +21,10 @@ function showMsg(text, type) {
   msgType.value = type
 }
 
+function goHome() {
+  location.hash = '#/'
+}
+
 async function onSubmit() {
   if (loading.value) return
   if (!username.value.trim() || !password.value) {
@@ -72,7 +76,7 @@ async function onSubmit() {
           {{ loading ? '登录中…' : '登 录' }}
         </button>
         <p class="switch">
-          <a href="#" @click.prevent="location.hash = '#/'">← 返回前台首页</a>
+          <a href="#/" @click.prevent="goHome">← 返回前台首页</a>
         </p>
       </form>
     </div>

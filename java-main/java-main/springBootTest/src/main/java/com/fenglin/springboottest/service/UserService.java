@@ -42,6 +42,7 @@ public class UserService {
     private final PostLikeMapper postLikeMapper;
     private final PostFavoriteMapper postFavoriteMapper;
     private final MessageMapper messageMapper;
+    private final CommentService commentService;
 
     /**
      * 注册（成功后由控制器写入会话，实现自动登录）
@@ -62,6 +63,7 @@ public class UserService {
         User user = new User();
         user.setUsername(username);
         user.setPassword(password); // 演示项目，明文存储
+        user.setPermission(1); // 注册用户一律为普通权限
         user.setAvatar("🐱");
         user.setNickname(username);
         user.setSlogan("这个人很懒，什么也没写～");
@@ -88,6 +90,23 @@ public class UserService {
     public User getUser(String username) {
         if (username == null) return null;
         return userMapper.selectOne(new QueryWrapper<User>().eq("username", username));
+    }
+
+    /**
+     * 后台管理员登录：必须是用户表中存在、密码正确且权限为 0（管理员）的账号。
+     * 密码为明文比对（演示项目）。
+     */
+    public User adminLogin(String username, String password) {
+        username = trim(username);
+        User user = userMapper.selectOne(
+                new QueryWrapper<User>().eq("username", username));
+        if (user == null || !user.getPassword().equals(password)) {
+            throw new BizException("管理员账号或密码错误喵～");
+        }
+        if (user.getPermission() == null || user.getPermission() != 0) {
+            throw new BizException("该账号没有管理员权限，无法登录后台喵～");
+        }
+        return user;
     }
 
     /**
@@ -258,6 +277,10 @@ public class UserService {
             String pw = str(form.get("password"));
             if (pw != null && !pw.isEmpty()) u.setPassword(pw);
         }
+        if (form.containsKey("permission")) {
+            Integer perm = intVal(form.get("permission"));
+            if (perm != null) u.setPermission(perm);
+        }
         userMapper.updateById(u);
     }
 
@@ -267,16 +290,18 @@ public class UserService {
         if (u == null) {
             throw new BizException("用户不存在喵～");
         }
-        // 1) 该用户发布的文章：先删文章的点赞 / 收藏，再删文章
+        // 1) 该用户发布的文章：先删文章的点赞 / 收藏 / 评论，再删文章
         List<Post> posts = postMapper.selectList(new QueryWrapper<Post>().eq("author", username));
         for (Post post : posts) {
             postLikeMapper.delete(new QueryWrapper<PostLike>().eq("post_id", post.getId()));
             postFavoriteMapper.delete(new QueryWrapper<PostFavorite>().eq("post_id", post.getId()));
+            commentService.deleteByPost(post.getId());
         }
         postMapper.delete(new QueryWrapper<Post>().eq("author", username));
-        // 2) 该用户发出的点赞 / 收藏
+        // 2) 该用户发出的点赞 / 收藏 / 评论
         postLikeMapper.delete(new QueryWrapper<PostLike>().eq("username", username));
         postFavoriteMapper.delete(new QueryWrapper<PostFavorite>().eq("username", username));
+        commentService.deleteByUser(username);
         // 3) 关注关系（作为关注者与被关注者）
         followMapper.delete(new QueryWrapper<UserFollow>().eq("follower", username));
         followMapper.delete(new QueryWrapper<UserFollow>().eq("following", username));
@@ -289,6 +314,15 @@ public class UserService {
 
     private String str(Object o) {
         return o == null ? null : o.toString();
+    }
+
+    private Integer intVal(Object o) {
+        if (o == null) return null;
+        try {
+            return Integer.valueOf(o.toString().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String trim(String s) {

@@ -22,4 +22,7 @@ public class PostVO {
 
     /** 收藏用户名列表 */
     private List<String> favorites;
+
+    /** 评论数 */
+    private Integer commentCount;
 }

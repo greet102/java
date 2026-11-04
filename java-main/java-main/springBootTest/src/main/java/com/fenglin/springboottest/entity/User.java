@@ -24,6 +24,9 @@ public class User {
     /** 密码（演示项目，明文存储） */
     private String password;
 
+    /** 权限：1=普通用户（默认），0=管理员 */
+    private Integer permission;
+
     /** 头像：用一个表情充当头像 */
     private String avatar;
 

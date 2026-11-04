@@ -6,12 +6,14 @@
 import { reactive, computed } from 'vue'
 
 const K_CUR = 'mewblog_current'
+const K_PERM = 'mewblog_permission'
 
 const EMOJIS = ['🐱', '🌈', '⭐', '🍰', '🌸', '🎈', '🐻', '💖', '🌟', '🍓']
 const COLORS = ['#ff9ec4', '#ffd6a5', '#b8f2d8', '#cdb4f6', '#a0e7ff']
 
 const state = reactive({
   currentUser: localStorage.getItem(K_CUR) || '',
+  userPermission: Number(localStorage.getItem(K_PERM) ?? 1), // 1=普通用户，0=管理员
   isAdmin: false, // 是否已登录后台
   adminUser: '', // 当前后台管理员账号
   posts: [],
@@ -30,6 +32,9 @@ const state = reactive({
 })
 
 const isLoggedIn = computed(() => !!state.currentUser)
+
+// 是否为管理员权限（用户表 permission=0）：控制「后台管理」入口的显隐
+const isAdminUser = computed(() => Number(state.userPermission) === 0)
 
 // ---------- 后端请求封装：统一返回 { ok, msg, data } ----------
 async function api(path, { method = 'GET', body } = {}) {
@@ -176,7 +181,9 @@ async function register(user, pass) {
   })
   if (!res.ok) return res
   state.currentUser = user // 注册后自动登录
+  state.userPermission = res.data && res.data.permission != null ? res.data.permission : 1
   localStorage.setItem(K_CUR, user)
+  localStorage.setItem(K_PERM, String(state.userPermission))
   await fetchPosts()
   await fetchMyProfile()
   startMsgSync()
@@ -191,7 +198,9 @@ async function login(user, pass) {
   })
   if (!res.ok) return res
   state.currentUser = user
+  state.userPermission = res.data && res.data.permission != null ? res.data.permission : 1
   localStorage.setItem(K_CUR, user)
+  localStorage.setItem(K_PERM, String(state.userPermission))
   await fetchPosts()
   await fetchMyProfile()
   startMsgSync()
@@ -202,7 +211,9 @@ async function logout() {
   await api('/auth/logout', { method: 'POST' })
   stopMsgSync()
   state.currentUser = ''
+  state.userPermission = 1
   localStorage.removeItem(K_CUR)
+  localStorage.removeItem(K_PERM)
   state.posts = []
   state.myProfile = null
   state.profile = null
@@ -311,6 +322,37 @@ async function toggleFavorite(id) {
     return true
   }
   return false
+}
+
+// ---------- 评论 ----------
+/** 拉取某篇文章的评论列表 */
+async function fetchComments(postId) {
+  const res = await api(`/posts/${postId}/comments`)
+  if (!res.ok) return []
+  return res.data || []
+}
+
+/** 发表评论，成功后就地累加该文章的评论数 */
+async function addComment(postId, content) {
+  const res = await api(`/posts/${postId}/comments`, {
+    method: 'POST',
+    body: { content },
+  })
+  if (res.ok) {
+    const p = state.posts.find((x) => x.id === postId)
+    if (p) p.commentCount = (p.commentCount || 0) + 1
+  }
+  return res
+}
+
+/** 删除评论（本人或后台管理员），成功后就地递减该文章的评论数 */
+async function deleteComment(postId, commentId) {
+  const res = await api(`/comments/${commentId}`, { method: 'DELETE' })
+  if (res.ok) {
+    const p = state.posts.find((x) => x.id === postId)
+    if (p) p.commentCount = Math.max(0, (p.commentCount || 0) - 1)
+  }
+  return res
 }
 
 async function updatePost(id, { title, body, emoji }) {
@@ -458,6 +500,8 @@ function esc(s) {
 if (state.currentUser) {
   api('/auth/me').then((res) => {
     if (res.ok && res.data) {
+      state.userPermission = res.data.permission != null ? res.data.permission : 1
+      localStorage.setItem(K_PERM, String(state.userPermission))
       fetchPosts()
       fetchMyProfile()
       startMsgSync()
@@ -473,6 +517,7 @@ export function useStore() {
   return {
     state,
     isLoggedIn,
+    isAdminUser,
     filteredPosts,
     fetchPosts,
     fetchMyProfile,
@@ -493,6 +538,9 @@ export function useStore() {
     updatePost,
     toggleLike,
     toggleFavorite,
+    fetchComments,
+    addComment,
+    deleteComment,
     deletePost,
     setFilter,
     toggleFollow,

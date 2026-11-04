@@ -89,3 +89,39 @@ CREATE TABLE IF NOT EXISTS `message` (
   KEY `idx_pair` (`sender`, `receiver`),
   KEY `idx_pair_rev` (`receiver`, `sender`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '私信消息表';
+
+-- ------------------------------------------------------------
+-- user 表：权限字段 permission（1=普通用户默认，0=管理员），按列幂等补齐
+-- ------------------------------------------------------------
+DROP PROCEDURE IF EXISTS `add_user_permission`;
+DELIMITER //
+CREATE PROCEDURE `add_user_permission`()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = 'blog_db' AND table_name = 'user' AND column_name = 'permission') THEN
+    ALTER TABLE `user` ADD COLUMN `permission` TINYINT NOT NULL DEFAULT 1 COMMENT '权限：1=普通用户（默认），0=管理员' AFTER `password`;
+  END IF;
+END //
+DELIMITER ;
+CALL `add_user_permission`();
+DROP PROCEDURE IF EXISTS `add_user_permission`;
+
+-- 内置管理员账号（权限 0），已存在则跳过
+INSERT INTO `user` (`username`, `password`, `permission`, `avatar`, `nickname`, `slogan`, `bio`, `location`, `birthday`, `created_at`)
+  SELECT 'admin', 'admin123', 0, '🛠️', '管理员', '这个人很懒，什么也没写～', '', '', NULL, NOW()
+  FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE `username` = 'admin');
+
+-- ------------------------------------------------------------
+-- 评论表（用户在文章下发表评论；comment 是 MySQL 保留字，表名需反引号）
+-- 幂等：仅做增量补齐，不会清空已有数据
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `comment` (
+  `id`         BIGINT        NOT NULL AUTO_INCREMENT COMMENT '评论ID',
+  `post_id`    BIGINT        NOT NULL                COMMENT '文章ID',
+  `username`   VARCHAR(50)   NOT NULL                COMMENT '评论者用户名',
+  `content`    VARCHAR(500)  NOT NULL                COMMENT '评论内容',
+  `created_at` DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_post` (`post_id`),
+  KEY `idx_user` (`username`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '评论表';

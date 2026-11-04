@@ -27,7 +27,7 @@ const err = ref('')
 
 const showEdit = ref(false)
 const editing = ref('')
-const form = reactive({ nickname: '', slogan: '', bio: '', avatar: '', location: '', password: '' })
+const form = reactive({ nickname: '', slogan: '', bio: '', avatar: '', location: '', password: '', permission: 1 })
 const EMOJIS = ['🐱', '🌈', '⭐', '🍰', '🌸', '🎈', '🐻', '💖', '🌟', '🍓']
 
 const toast = ref('')
@@ -95,6 +95,7 @@ function openEdit(u) {
   form.avatar = u.avatar || '🐱'
   form.location = u.location || ''
   form.password = ''
+  form.permission = u.permission ?? 1
   showEdit.value = true
 }
 
@@ -105,6 +106,7 @@ async function saveEdit() {
     bio: form.bio,
     avatar: form.avatar,
     location: form.location,
+    permission: Number(form.permission),
   }
   if (form.password.trim()) payload.password = form.password
   const res = await updateAdminUser(editing.value, payload)
@@ -209,6 +211,7 @@ function formatTime(v) {
                 <th>头像</th>
                 <th>用户名</th>
                 <th>昵称</th>
+                <th>权限</th>
                 <th>标语</th>
                 <th>地区</th>
                 <th>注册时间</th>
@@ -220,6 +223,7 @@ function formatTime(v) {
                 <td class="u-avatar">{{ u.avatar || '🐱' }}</td>
                 <td>{{ u.username }}</td>
                 <td>{{ u.nickname || '—' }}</td>
+                <td>{{ Number(u.permission) === 0 ? '🛠 管理员' : '👤 普通用户' }}</td>
                 <td class="u-slogan">{{ u.slogan || '—' }}</td>
                 <td>{{ u.location || '—' }}</td>
                 <td class="u-time">{{ formatTime(u.createdAt) }}</td>
@@ -229,7 +233,7 @@ function formatTime(v) {
                 </td>
               </tr>
               <tr v-if="!users.length">
-                <td colspan="7" class="empty">没有匹配的用户，换个关键词试试～</td>
+                <td colspan="8" class="empty">没有匹配的用户，换个关键词试试～</td>
               </tr>
             </tbody>
           </table>
@@ -289,6 +293,13 @@ function formatTime(v) {
             <span>重置密码（留空则不修改）</span>
             <input type="password" v-model="form.password" placeholder="输入新密码" />
           </label>
+          <div class="field">
+            <span>权限</span>
+            <select v-model="form.permission" class="perm-select">
+              <option :value="1">👤 普通用户（默认）</option>
+              <option :value="0">🛠 管理员（可登录后台）</option>
+            </select>
+          </div>
           <button class="btn btn-primary" @click="saveEdit">保存</button>
         </div>
       </div>
@@ -497,6 +508,18 @@ function formatTime(v) {
 .pg-info {
   font-size: 14px;
   color: var(--ink-soft);
+}
+.perm-select {
+  padding: 10px 14px;
+  border: 2px solid #f0d7ee;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  outline: none;
+}
+.perm-select:focus {
+  border-color: #d9b8f0;
 }
 .btn-sm {
   padding: 9px 16px;

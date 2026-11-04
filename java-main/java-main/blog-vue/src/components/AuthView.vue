@@ -2,7 +2,7 @@
 import { ref, nextTick } from 'vue'
 import { useStore } from '../store'
 
-const { register, login } = useStore()
+const { register, login, isAdminUser } = useStore()
 
 const mode = ref('login') // 'login' | 'register'
 const loginUser = ref('')
@@ -77,6 +77,10 @@ function switchMode(m) {
   msg.value = ''
   msgType.value = ''
   if (m === 'register') genCaptcha()
+}
+
+function goAdmin() {
+  location.hash = '#/admin'
 }
 
 function refreshCaptcha() {
@@ -194,9 +198,9 @@ async function doRegister() {
         <p class="switch">已经有账号啦？<a href="#" @click.prevent="switchMode('login')">去登录 ←</a></p>
       </form>
 
-      <!-- 前台登录/注册页也能随时进入后台管理系统 -->
-      <p class="switch admin-entry">
-        <a href="#" @click.prevent="location.hash = '#/admin'">🛠 进入后台管理</a>
+      <!-- 前台登录/注册页也能随时进入后台管理系统（仅管理员权限可见） -->
+      <p v-if="isAdminUser" class="switch admin-entry">
+        <a href="#/admin" @click.prevent="goAdmin">🛠 进入后台管理</a>
       </p>
     </div>
   </main>

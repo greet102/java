@@ -11,11 +11,31 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 02/11/2026 11:57:29
+ Date: 04/11/2026 09:32:02
 */
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for comment
+-- ----------------------------
+DROP TABLE IF EXISTS `comment`;
+CREATE TABLE `comment`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '评论ID',
+  `post_id` bigint NOT NULL COMMENT '文章ID',
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '评论者用户名',
+  `content` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '评论内容',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_post`(`post_id` ASC) USING BTREE,
+  INDEX `idx_user`(`username` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of comment
+-- ----------------------------
+INSERT INTO `comment` VALUES (5, 1, 'xx', '嘻嘻嘻', '2026-11-04 09:30:54');
 
 -- ----------------------------
 -- Table structure for message
@@ -53,7 +73,7 @@ CREATE TABLE `post`  (
   `ts` bigint NOT NULL COMMENT '发布时间（毫秒时间戳）',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_author`(`author` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '文章表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '文章表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of post
@@ -107,6 +127,7 @@ CREATE TABLE `user`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '用户ID',
   `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '用户名',
   `password` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '密码（演示项目，明文存储）',
+  `permission` tinyint NOT NULL DEFAULT 1 COMMENT '权限：1=普通用户（默认），0=管理员',
   `avatar` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '?' COMMENT '头像（用一个表情充当）',
   `nickname` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '昵称，为空时回退显示用户名',
   `slogan` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '个人主页标语',
@@ -116,16 +137,16 @@ CREATE TABLE `user`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
 -- ----------------------------
-INSERT INTO `user` VALUES (1, '喵站长', '123456', '🐱', NULL, NULL, NULL, NULL, NULL, '2026-10-28 09:11:04');
-INSERT INTO `user` VALUES (2, '奶油喵', '123456', '🐱', NULL, NULL, NULL, NULL, NULL, '2026-10-28 09:11:04');
-INSERT INTO `user` VALUES (3, '星星', '123456', '🐱', NULL, NULL, NULL, NULL, NULL, '2026-10-28 09:11:04');
-INSERT INTO `user` VALUES (4, 'xx', '1234', '🐱', 'xx', '这个人很懒，什么也没写', '', '喵星', NULL, '2026-10-28 09:26:45');
-INSERT INTO `user` VALUES (10, '咪咪', '1111', '🐱', '咪咪', '这个人很懒，什么也没写～', '', '', NULL, '2026-10-30 16:26:21');
+INSERT INTO `user` VALUES (1, '喵站长', '123456', 0, '🐱', '', '', '', '', NULL, '2026-10-28 09:11:04');
+INSERT INTO `user` VALUES (2, '奶油喵', '123456', 1, '🐱', NULL, NULL, NULL, NULL, NULL, '2026-10-28 09:11:04');
+INSERT INTO `user` VALUES (3, '星星', '123456', 1, '🐱', NULL, NULL, NULL, NULL, NULL, '2026-10-28 09:11:04');
+INSERT INTO `user` VALUES (4, 'xx', '1234', 0, '🐱', 'xx', '这个人很懒，什么也没写', '', '喵星', NULL, '2026-10-28 09:26:45');
+INSERT INTO `user` VALUES (10, '咪咪', '1111', 1, '🐱', '咪咪', '这个人很懒，什么也没写～', '', '', NULL, '2026-10-30 16:26:21');
 
 -- ----------------------------
 -- Table structure for user_follow

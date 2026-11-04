@@ -41,16 +41,22 @@ public class AdminController {
     @Value("${blog.admin.password:admin123}")
     private String adminPassword;
 
-    /** 管理员登录（仅登录，无注册） */
+    /**
+     * 管理员登录（仅登录，无注册）。
+     * 用户表中权限为 0（管理员）的账号可登录；配置中指定的超级管理员始终有效，
+     * 防止唯一管理员的权限被误改后无人能进后台。
+     */
     @PostMapping("/login")
     public Result<String> login(@RequestBody LoginRequest req, HttpSession session) {
         String u = trim(req == null ? null : req.getUsername());
         String p = req == null ? null : req.getPassword();
-        if (!adminUsername.equals(u) || !adminPassword.equals(p)) {
-            throw new BizException("管理员账号或密码错误喵～");
+        if (adminUsername.equals(u) && adminPassword.equals(p)) {
+            session.setAttribute(SESSION_ADMIN, adminUsername);
+            return Result.ok("登录成功", adminUsername);
         }
-        session.setAttribute(SESSION_ADMIN, adminUsername);
-        return Result.ok("登录成功", adminUsername);
+        User user = userService.adminLogin(u, p);
+        session.setAttribute(SESSION_ADMIN, user.getUsername());
+        return Result.ok("登录成功", user.getUsername());
     }
 
     /** 退出后台 */

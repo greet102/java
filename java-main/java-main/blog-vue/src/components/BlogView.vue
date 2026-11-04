@@ -8,7 +8,7 @@ import ProfileView from './ProfileView.vue'
 import UserRow from './UserRow.vue'
 import ChatView from './ChatView.vue'
 
-const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome, openChatList } = useStore()
+const { state, filteredPosts, logout, addPost, updatePost, openProfile, backHome, openChatList, isAdminUser } = useStore()
 
 const showModal = ref(false)
 const editing = ref(null) // 非 null 时为编辑模式
@@ -92,7 +92,7 @@ async function handleSubmit(payload) {
         <span class="topbar-name">喵喵博客</span>
       </div>
       <div class="topbar-right">
-        <button class="btn btn-ghost" @click="openAdmin">🛠 后台管理</button>
+        <button v-if="isAdminUser" class="btn btn-ghost" @click="openAdmin">🛠 后台管理</button>
         <button class="btn btn-ghost" @click="openNew">✏️ 写新文章</button>
         <button class="btn btn-ghost dm-btn" @click="openChatList">
           💌 私信

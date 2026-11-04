@@ -29,6 +29,7 @@ public class PostService {
     private final PostMapper postMapper;
     private final PostLikeMapper postLikeMapper;
     private final PostFavoriteMapper favoriteMapper;
+    private final CommentService commentService;
 
     /**
      * 查询全部文章（按时间倒序），并把点赞 / 收藏用户拼装成数组
@@ -42,9 +43,12 @@ public class PostService {
         // 一次性查出所有点赞 / 收藏记录，按 post_id 分组
         Map<Long, List<String>> likeMap = groupByPost(postLikeMapper.selectList(null));
         Map<Long, List<String>> favoriteMap = groupByPostId(favoriteMapper.selectList(null));
+        // 各篇文章的评论数
+        Map<Long, Long> commentCountMap = commentService.countByPosts(
+                posts.stream().map(Post::getId).collect(Collectors.toList()));
 
         return posts.stream()
-                .map(p -> toVO(p, likeMap, favoriteMap))
+                .map(p -> toVO(p, likeMap, favoriteMap, commentCountMap))
                 .collect(Collectors.toList());
     }
 
@@ -99,7 +103,7 @@ public class PostService {
     }
 
     /**
-     * 删除文章（仅作者本人可删除），同时清理点赞与收藏记录
+     * 删除文章（仅作者本人可删除），同时清理点赞、收藏与评论
      */
     @Transactional
     public void deletePost(String username, Long id) {
@@ -109,6 +113,7 @@ public class PostService {
                 new QueryWrapper<PostLike>().eq("post_id", id));
         favoriteMapper.delete(
                 new QueryWrapper<PostFavorite>().eq("post_id", id));
+        commentService.deleteByPost(id);
     }
 
     /**
@@ -164,7 +169,8 @@ public class PostService {
     // ==================== 私有工具 ====================
 
     private PostVO toVO(Post p, Map<Long, List<String>> likeMap,
-                        Map<Long, List<String>> favoriteMap) {
+                        Map<Long, List<String>> favoriteMap,
+                        Map<Long, Long> commentCountMap) {
         PostVO vo = new PostVO();
         vo.setId(p.getId());
         vo.setAuthor(p.getAuthor());
@@ -174,6 +180,7 @@ public class PostService {
         vo.setTs(p.getTs());
         vo.setLikes(likeMap.getOrDefault(p.getId(), List.of()));
         vo.setFavorites(favoriteMap.getOrDefault(p.getId(), List.of()));
+        vo.setCommentCount(commentCountMap.getOrDefault(p.getId(), 0L).intValue());
         return vo;
     }
 
