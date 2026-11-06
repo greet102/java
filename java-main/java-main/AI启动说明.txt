@@ -175,6 +175,30 @@ curl --noproxy '*' -s http://localhost:5173/api/posts
 - 验证：后端 profile 接口实测顶层与 followings 每行 isFollowing 正确；
       Vite 转译 store.js / UserRow.vue 无报错。
 
+----------------------------------------------------------------
+九、2026-11-06 修复记录（后端打包失败：通知功能类缺失）
+----------------------------------------------------------------
+- 现象：一键启动在“重新打包后端”步骤报 [失败] 后端：打包失败，
+       mvn 编译报错：UserService / CommentService / PostService 找不到符号
+       NotificationService（6 处）。
+- 根因：通知功能只改了调用方与前端（store.js / BlogView.vue 已引用
+       /api/notifications*），数据库 notification 表也已在 sql 里，
+       但后端 entity/mapper/service/controller 四个类全部漏建
+       （与 2026-10-28 PostFavorite 漏建同类问题）。
+- 修复：补建 4 个文件（写法参照 Message 私信同款）：
+       entity/Notification.java       表名 notification
+       mapper/NotificationMapper.java BaseMapper
+       service/NotificationService.java
+         notify()/listRecent()/unreadCount()/markAllRead()
+         /deleteByUser()/deleteByActor()/deleteByPost()
+       controller/NotificationController.java
+         GET /api/notifications/unread → 未读数
+         GET /api/notifications        → 最近 50 条
+         POST /api/notifications/read  → 全部已读
+       notify() 内含防护：自己对自己操作不发通知（username==actor 跳过）。
+- 验证：打包成功；后端 8081 就绪；三端点实测返回正常；
+       奶油喵点赞喵站长文章 → 喵站长通知列表收到 like 通知，端到端通过。
+
 ================================================================
- 最后更新：2026-10-28 09:40
+ 最后更新：2026-11-06 15:40
 ================================================================
