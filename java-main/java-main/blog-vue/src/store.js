@@ -455,6 +455,13 @@ async function fetchProfile(username) {
   return null
 }
 
+/** 拉取某人的粉丝列表（主页“粉丝”Tab 用，失败返回空数组） */
+async function fetchFollowers(username) {
+  if (!username) return []
+  const res = await api(`/users/${encodeURIComponent(username)}/followers`)
+  return res.ok ? res.data || [] : []
+}
+
 async function updateProfile(form) {
   const res = await api('/users/me/profile', { method: 'PUT', body: form })
   if (res.ok) {
@@ -571,6 +578,7 @@ export function useStore() {
     fetchPosts,
     fetchMyProfile,
     fetchProfile,
+    fetchFollowers,
     EMOJIS,
     register,
     login,

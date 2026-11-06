@@ -9,7 +9,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['back', 'edit', 'toast'])
 
-const { state, fetchProfile, toggleFollow, openProfile, updateProfile, timeAgo, openChat } = useStore()
+const { state, fetchProfile, toggleFollow, fetchFollowers, openProfile, updateProfile, timeAgo, openChat } = useStore()
 
 const profile = computed(() => state.profile)
 const isSelf = computed(() => !!state.currentUser && state.currentUser === props.username)
@@ -23,9 +23,35 @@ const followerCount = computed(() => profile.value?.followerCount ?? 0)
 const followingCount = computed(() => profile.value?.followingCount ?? 0)
 const isFollowing = computed(() => !!profile.value?.isFollowing)
 
+// ---- 文章 / 粉丝 / 关注 三个 Tab ----
+const activeTab = ref('posts') // posts | followers | followings
+const followers = ref([]) // 粉丝列表（点击“粉丝”时按需加载）
+const followersLoaded = ref(false)
+const tabContentRef = ref(null)
+
+async function showTab(tab) {
+  activeTab.value = tab
+  // 粉丝列表按需加载，只拉一次；关注/文章数据来自 profile，已有
+  if (tab === 'followers' && !followersLoaded.value) {
+    followers.value = await fetchFollowers(props.username)
+    followersLoaded.value = true
+  }
+  // 平滑滚动到内容区，模拟“跳转查看”
+  if (tabContentRef.value) {
+    tabContentRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+function resetTabs() {
+  activeTab.value = 'posts'
+  followers.value = []
+  followersLoaded.value = false
+}
+
 // 进入时若主页数据尚未加载或不是当前用户，主动拉一次
 async function ensure() {
   if (!profile.value || profile.value.username !== props.username) {
+    resetTabs()
     await fetchProfile(props.username)
   }
 }
@@ -38,6 +64,14 @@ async function onFollow() {
     return
   }
   const ok = await toggleFollow(props.username)
+  if (ok) {
+    // 自己成了对方的粉丝/不再是粉丝，粉丝列表需要刷新
+    followersLoaded.value = false
+    if (activeTab.value === 'followers') {
+      followers.value = await fetchFollowers(props.username)
+      followersLoaded.value = true
+    }
+  }
   emit('toast', ok ? (isFollowing.value ? '已关注 💞' : '已取消关注') : '操作失败，请稍后重试喵～')
 }
 
@@ -96,9 +130,15 @@ async function saveEdit() {
       </div>
 
       <div class="pv-stats">
-        <span><b>{{ posts.length }}</b> 文章</span>
-        <span><b>{{ followerCount }}</b> 粉丝</span>
-        <span><b>{{ followingCount }}</b> 关注</span>
+        <button class="pv-stat" :class="{ on: activeTab === 'posts' }" @click="showTab('posts')">
+          <b>{{ posts.length }}</b> 文章
+        </button>
+        <button class="pv-stat" :class="{ on: activeTab === 'followers' }" @click="showTab('followers')">
+          <b>{{ followerCount }}</b> 粉丝
+        </button>
+        <button class="pv-stat" :class="{ on: activeTab === 'followings' }" @click="showTab('followings')">
+          <b>{{ followingCount }}</b> 关注
+        </button>
       </div>
 
       <div v-if="profile?.bio" class="pv-bio">{{ profile.bio }}</div>
@@ -122,25 +162,36 @@ async function saveEdit() {
       </div>
     </div>
 
-    <!-- TA 关注的人 -->
-    <div v-if="followings.length" class="pv-section">
-      <h3>💞 关注的人（{{ followings.length }}）</h3>
-      <UserRow v-for="u in followings" :key="u.username" :user="u" @toast="emit('toast', $event)" />
-    </div>
+    <!-- 文章 / 粉丝 / 关注 三个 Tab 的内容区 -->
+    <div ref="tabContentRef" class="pv-section">
+      <!-- 文章 -->
+      <template v-if="activeTab === 'posts'">
+        <h3>📝 文章（{{ posts.length }}）</h3>
+        <div v-if="posts.length" class="pv-feed">
+          <PostCard
+            v-for="p in posts"
+            :key="p.id"
+            :post="p"
+            @edit="emit('edit', $event)"
+            @toast="emit('toast', $event)"
+          />
+        </div>
+        <div v-else class="pv-empty">这里还空空的，去写点什么吧～</div>
+      </template>
 
-    <!-- TA 的文章 -->
-    <div class="pv-section">
-      <h3>📝 文章（{{ posts.length }}）</h3>
-      <div v-if="posts.length" class="pv-feed">
-        <PostCard
-          v-for="p in posts"
-          :key="p.id"
-          :post="p"
-          @edit="emit('edit', $event)"
-          @toast="emit('toast', $event)"
-        />
-      </div>
-      <div v-else class="pv-empty">这里还空空的，去写点什么吧～</div>
+      <!-- 粉丝 -->
+      <template v-else-if="activeTab === 'followers'">
+        <h3>🐾 粉丝（{{ followerCount }}）</h3>
+        <UserRow v-for="u in followers" :key="u.username" :user="u" @toast="emit('toast', $event)" />
+        <div v-if="!followers.length" class="pv-empty">还没有粉丝，快去和别人互动吧～</div>
+      </template>
+
+      <!-- 关注 -->
+      <template v-else>
+        <h3>💞 关注的人（{{ followingCount }}）</h3>
+        <UserRow v-for="u in followings" :key="u.username" :user="u" @toast="emit('toast', $event)" />
+        <div v-if="!followings.length" class="pv-empty">还没有关注任何人喵～</div>
+      </template>
     </div>
   </div>
 </template>
@@ -224,6 +275,26 @@ async function saveEdit() {
   gap: 18px;
   color: #8a7a95;
   font-size: 14px;
+}
+.pv-stat {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.pv-stat:hover {
+  background: #fff0f6;
+  color: #c98bb0;
+}
+.pv-stat.on {
+  background: #fff0f6;
+  color: #c98bb0;
+  font-weight: 700;
 }
 .pv-stats b {
   color: var(--ink, #4a3b52);

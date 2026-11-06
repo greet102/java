@@ -176,6 +176,35 @@ public class UserService {
     }
 
     /**
+     * 查询某人的粉丝列表（用于主页的“粉丝”Tab）。
+     * 同样按浏览者是否已关注，填充每行的 isFollowing，供前端 UserRow 显示“已关注”。
+     */
+    public List<UserSummary> getFollowers(String viewer, String username) {
+        List<UserFollow> list = followMapper.selectList(
+                new QueryWrapper<UserFollow>().eq("following", username));
+        // 浏览者已关注的人，一次查出后放进集合，避免 N 次查询
+        Set<String> myFollowed = new HashSet<>();
+        if (viewer != null) {
+            List<UserFollow> mine = followMapper.selectList(
+                    new QueryWrapper<UserFollow>().eq("follower", viewer));
+            for (UserFollow f : mine) myFollowed.add(f.getFollowing());
+        }
+        List<UserSummary> res = new ArrayList<>();
+        for (UserFollow f : list) {
+            User u = getUser(f.getFollower());
+            if (u == null) continue;
+            UserSummary s = new UserSummary();
+            s.setUsername(u.getUsername());
+            s.setNickname(u.getNickname());
+            s.setSlogan(u.getSlogan());
+            s.setAvatar(u.getAvatar());
+            s.setFollowing(viewer != null && myFollowed.contains(u.getUsername()));
+            res.add(s);
+        }
+        return res;
+    }
+
+    /**
      * 关注 / 取消关注，返回最新关注状态与粉丝数
      */
     public Map<String, Object> toggleFollow(String follower, String target) {

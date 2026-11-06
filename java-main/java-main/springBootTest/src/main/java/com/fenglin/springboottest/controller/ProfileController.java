@@ -3,6 +3,7 @@ package com.fenglin.springboottest.controller;
 import com.fenglin.springboottest.common.BizException;
 import com.fenglin.springboottest.common.Result;
 import com.fenglin.springboottest.dto.ProfileVO;
+import com.fenglin.springboottest.dto.UserSummary;
 import com.fenglin.springboottest.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -32,6 +34,13 @@ public class ProfileController {
     public Result<ProfileVO> profile(@PathVariable String username, HttpSession session) {
         String viewer = (String) session.getAttribute(UserController.SESSION_USER);
         return Result.ok(userService.getProfile(viewer, username));
+    }
+
+    /** 查询某人的粉丝列表 */
+    @GetMapping("/{username}/followers")
+    public Result<List<UserSummary>> followers(@PathVariable String username, HttpSession session) {
+        String viewer = (String) session.getAttribute(UserController.SESSION_USER);
+        return Result.ok(userService.getFollowers(viewer, username));
     }
 
     /** 关注 / 取消关注 */
